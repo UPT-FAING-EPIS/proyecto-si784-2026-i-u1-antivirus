@@ -1,0 +1,33 @@
+# .gitignore — Antivirus Académico
+
+# Entorno virtual Python
+venv/
+env/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Base de datos generada localmente
+antivirus.db
+
+# Variables de entorno locales (no subir credenciales)
+.env
+
+# Carpeta de cuarentena (contiene archivos potencialmente peligrosos)
+quarantine/
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Cobertura de tests
+.coverage
+htmlcov/
