@@ -26,7 +26,7 @@ Integrantes:
 
 </center>
 
-<div style="page-break-after: always; visibility: hidden">\pagebreak</div>
+<div style="page-break-after: always; visibility: hidden"></div>
 
 Sistema *SecureGuard Antivirus*
 
@@ -39,7 +39,7 @@ Versión *1.0*
 | Versión | Hecha por | Revisada por | Aprobada por | Fecha | Motivo |
 | 1.0 | LLica Mamani, Jimmy Mijair | Sierra Ruiz, Iker Alberto | LLica Mamani, Jimmy Mijair | 28/03/2026 | Versión Original |
 
-<div style="page-break-after: always; visibility: hidden">\pagebreak</div>
+<div style="page-break-after: always; visibility: hidden"></div>
 
 # **INDICE GENERAL**
 
@@ -73,7 +73,7 @@ Versión *1.0*
 
 [6. Conclusiones](#6-conclusiones)
 
-<div style="page-break-after: always; visibility: hidden">\pagebreak</div>
+<div style="page-break-after: always; visibility: hidden"></div>
 
 **<u>Informe de Factibilidad</u>**
 
@@ -116,7 +116,7 @@ Desarrollar un software antivirus funcional que permita detectar, prevenir y eli
 | OE-05 | Implementar pruebas de calidad según ISO/IEC 25010 | Se logrará medir y garantizar atributos de calidad como adecuación funcional, fiabilidad y mantenibilidad. |
 | OE-06 | Documentar y gestionar la configuración del proyecto | Se logrará establecer un repositorio en GitHub con la estructura adecuada y control de versiones para el trabajo colaborativo. |
 
-<div style="page-break-after: always; visibility: hidden">\pagebreak</div>
+<div style="page-break-after: always; visibility: hidden"></div>
 
 ## 2. Riesgos
 
@@ -131,7 +131,7 @@ Señale los riesgos que pudieran afectar el éxito del proyecto.
 | R-05 | Retrasos en el cronograma | Estimaciones de tiempo inexactas que afecten la entrega del proyecto. | Medio | Media | Seguimiento semanal de avances y uso de metodologías ágiles para la gestión del desarrollo. |
 | R-06 | Obsolescencia tecnológica | Cambios en los sistemas operativos objetivo que afecten la compatibilidad. | Medio | Baja | Mantener una arquitectura modular (Issue #5) que permita adaptaciones futuras. |
 
-<div style="page-break-after: always; visibility: hidden">\pagebreak</div>
+<div style="page-break-after: always; visibility: hidden"></div>
 
 ## 3. Análisis de la Situación actual
 
@@ -159,7 +159,7 @@ El proyecto SecureGuard Antivirus surge como una respuesta a esta necesidad, ofr
 | **Infraestructura** | Red | Conexión a internet, red LAN | Disponible |
 | | Dominio | No requerido para prototipo | N/A |
 
-<div style="page-break-after: always; visibility: hidden">\pagebreak</div>
+<div style="page-break-after: always; visibility: hidden"></div>
 
 ## 4. Estudio de Factibilidad
 
@@ -333,7 +333,7 @@ Evaluación del impacto y repercusión en el medio ambiente.
 
 **Conclusión Ambiental:** El proyecto es ambientalmente viable. Su naturaleza digital y su enfoque en la eficiencia contribuyen a un impacto ambiental reducido.
 
-<div style="page-break-after: always; visibility: hidden">\pagebreak</div>
+<div style="page-break-after: always; visibility: hidden"></div>
 
 ## 5. Análisis Financiero
 
@@ -423,7 +423,7 @@ Resolviendo la ecuación:
 | VAN | S/. 51,281.70 | > 0 | Aceptar |
 | TIR | 185% | > COK (12%) | Aceptar |
 
-<div style="page-break-after: always; visibility: hidden">\pagebreak</div>
+<div style="page-break-after: always; visibility: hidden"></div>
 
 ## 6. Conclusiones
 
