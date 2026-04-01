@@ -1,42 +1,71 @@
-"""
-application/cleanup_use_case.py
-=================================
-Caso de uso: Limpieza del sistema (PC Cleanup).
+import logging
+from typing import List
 
-Este archivo orquesta la lógica de negocio para limpiar archivos
-temporales y basura del sistema operativo.
+from domain.interfaces import ICleanupService, IQuarantineManager
+from application.dtos import CleanupRequestDTO, CleanupReportDTO
 
-La limpieza NO toca archivos del usuario ni del sistema operativo crítico.
-Solo elimina archivos temporales seguros y, opcionalmente, la cuarentena.
+logger = logging.getLogger(__name__)
 
-Dependencias que recibe por inyección (constructor):
-    - cleanup_service: ICleanupService → localiza y elimina archivos temporales
-    - quarantine_manager: IQuarantineManager → accede a la lista de cuarentena
 
-Clases que debe contener:
---------------------------
-
-PCCleanupUseCase:
-    Orquestador de la limpieza del sistema.
-
-    Método: preview(request: CleanupRequestDTO) -> list[str]
-        Muestra al usuario qué archivos SERÍAN eliminados sin eliminarlos aún.
-        Útil para presentar una vista previa antes de confirmar la limpieza.
-        Flujo interno:
-            1. Llama a ICleanupService.find_temp_files() para obtener la lista.
-            2. Si include_quarantine es True, agrega los archivos de cuarentena.
-            3. Retorna la lista combinada de rutas.
-
-    Método: execute(request: CleanupRequestDTO) -> CleanupReportDTO
-        Realiza la limpieza efectiva del sistema.
-        Flujo interno:
-            1. Llama a preview() para obtener la lista de archivos a eliminar.
-            2. Delega la eliminación al ICleanupService.
-            3. Registra cuántos archivos se eliminaron y cuántos bytes se liberaron.
-            4. Captura errores individuales sin detener toda la operación.
-            5. Construye y retorna un CleanupReportDTO con el resumen completo.
-
-    Método: _calculate_total_size(paths: list[str]) -> int  [privado]
-        Calcula el tamaño total en bytes de los archivos que serán eliminados.
-        Maneja individualmente los errores de acceso a archivos no accesibles.
-"""
+class PCCleanupUseCase:
+    """Orquestador de la limpieza del sistema."""
+    
+    def __init__(self, cleanup_service: ICleanupService, quarantine_manager: IQuarantineManager):
+        self.cleanup_service = cleanup_service
+        self.quarantine_manager = quarantine_manager
+    
+    def preview(self, request: CleanupRequestDTO) -> List[str]:
+        """Muestra qué archivos serían eliminados sin eliminarlos aún."""
+        files_to_delete = []
+        
+        if request.include_temp:
+            files_to_delete.extend(self.cleanup_service.find_temp_files())
+        
+        if request.include_quarantine:
+            quarantined_files = self.quarantine_manager.list_quarantined_files()
+            files_to_delete.extend([qf.quarantine_path for qf in quarantined_files])
+        
+        if request.custom_paths:
+            files_to_delete.extend(request.custom_paths)
+        
+        return files_to_delete
+    
+    def execute(self, request: CleanupRequestDTO) -> CleanupReportDTO:
+        """Realiza la limpieza efectiva del sistema."""
+        files_to_delete = self.preview(request)
+        
+        total_size = self._calculate_total_size(files_to_delete)
+        files_deleted = 0
+        errors = []
+        
+        for file_path in files_to_delete:
+            try:
+                if self.cleanup_service.delete_file(file_path):
+                    files_deleted += 1
+            except Exception as e:
+                errors.append(f"{file_path}: {str(e)}")
+                logger.error(f"Error eliminando {file_path}: {e}")
+        
+        space_freed_mb = total_size / (1024 * 1024)
+        
+        return CleanupReportDTO(
+            files_deleted=files_deleted,
+            space_freed_mb=space_freed_mb,
+            errors=errors,
+            success=len(errors) == 0
+        )
+    
+    def _calculate_total_size(self, paths: List[str]) -> int:
+        """Calcula el tamaño total en bytes de los archivos que serán eliminados."""
+        from pathlib import Path
+        
+        total_size = 0
+        for path in paths:
+            try:
+                file_path = Path(path)
+                if file_path.exists():
+                    total_size += file_path.stat().st_size
+            except Exception as e:
+                logger.warning(f"No se pudo obtener tamaño de {path}: {e}")
+        
+        return total_size

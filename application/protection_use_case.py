@@ -1,49 +1,65 @@
-"""
-application/protection_use_case.py
-====================================
-Caso de uso: Protección en tiempo real (Real-Time Protection).
+import logging
+import time
+from typing import Callable, Optional
 
-Este archivo orquesta la lógica de negocio para monitorear el sistema
-de archivos en tiempo real y reaccionar ante nuevos archivos detectados.
+from domain.interfaces import IFileMonitor, IFileScanner, ISignatureRepository
+from application.quarantine_use_case import QuarantineUseCase
 
-Cuando el usuario descarga o crea un archivo, este caso de uso verifica
-automáticamente si coincide con alguna firma sospechosa.
+logger = logging.getLogger(__name__)
 
-Dependencias que recibe por inyección (constructor):
-    - monitor: IFileMonitor → observador del sistema de archivos
-    - scanner: IFileScanner → motor de escaneo para verificar nuevos archivos
-    - repository: ISignatureRepository → consulta de firmas
-    - quarantine_use_case: QuarantineUseCase → para aislar amenazas encontradas
 
-Clases que debe contener:
---------------------------
-
-RealTimeProtectionUseCase:
-    Orquestador de la protección en tiempo real.
-
-    Método: start(directory: str) -> None
-        Inicia el monitoreo de un directorio.
-        Registra el callback interno _on_new_file en el IFileMonitor.
-        El monitor corre en un hilo separado (gestionado por infraestructura).
-
-    Método: stop() -> None
-        Detiene el monitoreo de forma segura.
-        Llama a IFileMonitor.stop_monitoring().
-
-    Método: is_active() -> bool
-        Retorna True si el monitoreo está activo en este momento.
-
-    Método: _on_new_file(file_path: str) -> None  [privado, callback interno]
-        Se ejecuta cada vez que el monitor detecta un nuevo archivo.
-        Flujo interno:
-            1. Recibe la ruta del nuevo archivo.
-            2. Espera brevemente si el archivo aún está siendo escrito (pausa pequeña).
-            3. Solicita al IFileScanner que lo analice.
-            4. Si se detecta una amenaza, llama al QuarantineUseCase automáticamente.
-            5. Notifica al sistema de presentación (via callback registrable externamente).
-
-    Método: set_alert_callback(callback: callable) -> None
-        Permite a la capa de presentación registrar una función
-        que será llamada con el ThreatFile cuando se detecte una amenaza.
-        Esto desacopla la presentación del caso de uso.
-"""
+class RealTimeProtectionUseCase:
+    """Orquestador de la protección en tiempo real."""
+    
+    def __init__(
+        self,
+        monitor: IFileMonitor,
+        scanner: IFileScanner,
+        repository: ISignatureRepository,
+        quarantine_use_case: QuarantineUseCase
+    ):
+        self.monitor = monitor
+        self.scanner = scanner
+        self.repository = repository
+        self.quarantine_use_case = quarantine_use_case
+        self._alert_callback: Optional[Callable] = None
+    
+    def start(self, directory: str) -> None:
+        """Inicia el monitoreo de un directorio."""
+        self.monitor.start_monitoring(directory, self._on_new_file)
+        logger.info(f"Protección en tiempo real iniciada en: {directory}")
+    
+    def stop(self) -> None:
+        """Detiene el monitoreo de forma segura."""
+        self.monitor.stop_monitoring()
+        logger.info("Protección en tiempo real detenida")
+    
+    def is_active(self) -> bool:
+        """Retorna True si el monitoreo está activo en este momento."""
+        return self.monitor.is_active()
+    
+    def _on_new_file(self, file_path: str) -> None:
+        """Callback que se ejecuta cuando se detecta un nuevo archivo."""
+        try:
+            time.sleep(0.5)
+            
+            scan_result = self.scanner.scan_file(file_path, self.repository)
+            
+            if scan_result.is_threat:
+                from application.dtos import QuarantineRequestDTO
+                
+                request = QuarantineRequestDTO(
+                    file_path=file_path,
+                    reason=scan_result.signature_name
+                )
+                response = self.quarantine_use_case.execute(request)
+                
+                if self._alert_callback:
+                    self._alert_callback(scan_result, response)
+                    
+        except Exception as e:
+            logger.error(f"Error procesando nuevo archivo {file_path}: {e}")
+    
+    def set_alert_callback(self, callback: Callable) -> None:
+        """Registra una función que será llamada cuando se detecte una amenaza."""
+        self._alert_callback = callback

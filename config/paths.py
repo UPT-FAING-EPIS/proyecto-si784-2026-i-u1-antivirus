@@ -1,43 +1,14 @@
-"""
-config/paths.py
-================
-Constantes de rutas del sistema resueltas con pathlib.
+from pathlib import Path
 
-Este archivo centraliza todas las rutas del proyecto usando pathlib.Path,
-que funciona correctamente en Windows, Linux y macOS sin cambios de código.
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-Usar pathlib en lugar de strings directos para rutas es una buena práctica
-que evita errores de separadores (/ vs \) entre sistemas operativos.
+DB_FILE_PATH = BASE_DIR / 'antivirus.db'
 
-No contiene clases. Solo constantes de nivel de módulo:
+QUARANTINE_PATH = BASE_DIR / 'quarantine'
+QUARANTINE_PATH.mkdir(parents=True, exist_ok=True)
 
-Constantes que debe definir:
------------------------------
+QUARANTINE_INDEX_PATH = QUARANTINE_PATH / 'quarantine_index.json'
 
-BASE_DIR (Path):
-    Directorio raíz del proyecto.
-    Se calcula automáticamente como el directorio padre de este archivo.
-    Ejemplo: Path(__file__).resolve().parent.parent
+SCHEMA_SQL_PATH = BASE_DIR / 'schema.sql'
 
-DB_FILE_PATH (Path):
-    Ruta completa al archivo de base de datos SQLite.
-    Construida como: BASE_DIR / 'antivirus.db'
-
-QUARANTINE_PATH (Path):
-    Ruta completa a la carpeta de cuarentena.
-    Construida como: BASE_DIR / 'quarantine'
-    Se crea automáticamente si no existe al importar este módulo.
-
-QUARANTINE_INDEX_PATH (Path):
-    Ruta al archivo JSON que indexa los archivos en cuarentena.
-    Construida como: QUARANTINE_PATH / 'quarantine_index.json'
-
-SCHEMA_SQL_PATH (Path):
-    Ruta al archivo SQL de creación de la base de datos.
-    Construida como: BASE_DIR / 'schema.sql'
-    Útil para inicializar la BD en entornos nuevos.
-
-ENV_FILE_PATH (Path):
-    Ruta al archivo .env de variables de entorno.
-    Construida como: BASE_DIR / '.env'
-"""
+ENV_FILE_PATH = BASE_DIR / '.env'
