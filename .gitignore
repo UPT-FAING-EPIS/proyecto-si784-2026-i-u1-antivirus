@@ -1,33 +1,32 @@
-# .gitignore — Antivirus Académico
+# Rust
+backend_rust/target/
+backend_rust/**/*.rs.bk
+backend_rust/*.pdb
 
-# Entorno virtual Python
-venv/
-env/
-.venv/
+# Python
 __pycache__/
 *.pyc
 *.pyo
-*.pyd
+*.egg-info/
+dist/
+build/
 
-# Base de datos generada localmente
-antivirus.db
-
-# Variables de entorno locales (no subir credenciales)
+# Entorno virtual
+venv/
+env/
 .env
 
-# Carpeta de cuarentena (contiene archivos potencialmente peligrosos)
-quarantine/
-
-# IDEs
+# IDE
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
+*.swp
+*.swo
 
-# Sistema operativo
-.DS_Store
+# Windows
 Thumbs.db
+Desktop.ini
+*.exe
+*.dll
 
-# Cobertura de tests
-.coverage
-htmlcov/
+# Firmas grandes (opcional - si tu archivo pesa mucho)
+# frontend_python/assets/signatures/malware_hashes.txt
