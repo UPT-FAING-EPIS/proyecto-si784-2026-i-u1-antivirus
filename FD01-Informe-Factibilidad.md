@@ -267,6 +267,231 @@ Gastos generados por el recurso humano necesario para el desarrollo del sistema.
 
 **Conclusión Económica:** El proyecto es económicamente viable. Los costos son mínimos (principalmente personal y servicios básicos) y pueden ser asumidos por el equipo de desarrollo.
 
+#### 4.2.6. Análisis de Costos en la Nube (AWS vs Azure)
+
+Aunque SecureGuard Antivirus es una aplicación de escritorio que opera localmente, se plantea la posibilidad de una arquitectura híbrida para la distribución de actualizaciones de firmas y telemetría opcional. A continuación se comparan las principales opciones en nube.
+
+**Servicios requeridos (escenario de despliegue en nube):**
+
+| Servicio | Función en el sistema |
+|:---------|:----------------------|
+| Almacenamiento de objetos | Alojar base de firmas (`malware_hashes.txt`, reglas YARA) |
+| CDN | Distribución rápida de actualizaciones de firmas globalmente |
+| Servidor de API REST | Endpoint de actualización y reporte de telemetría (opcional) |
+| Base de datos relacional | Registro de versiones de firmas y estadísticas |
+
+**Estimación de costos mensuales — Amazon Web Services (AWS):**
+
+| Servicio AWS | Especificación | Costo Estimado (USD/mes) |
+|:-------------|:---------------|:------------------------:|
+| Amazon S3 | 5 GB almacenamiento + 50 GB transferencia | $1.50 |
+| Amazon CloudFront | CDN, 100 GB transferencia | $9.00 |
+| AWS Lambda | API de actualización (1M invocaciones/mes) | $0.20 |
+| Amazon RDS (db.t3.micro) | PostgreSQL, base de firmas y versiones | $15.00 |
+| **Total mensual AWS** | | **$25.70** |
+| **Total anual AWS** | | **$308.40** |
+
+**Estimación de costos mensuales — Microsoft Azure:**
+
+| Servicio Azure | Especificación | Costo Estimado (USD/mes) |
+|:---------------|:---------------|:------------------------:|
+| Azure Blob Storage | 5 GB + 50 GB transferencia | $1.20 |
+| Azure CDN | 100 GB transferencia | $8.50 |
+| Azure Functions | API de actualización (1M ejecuciones/mes) | $0.20 |
+| Azure Database for PostgreSQL (B1ms) | Base de firmas y versiones | $12.00 |
+| **Total mensual Azure** | | **$21.90** |
+| **Total anual Azure** | | **$262.80** |
+
+**Comparativa: Despliegue Local vs. Nube:**
+
+| Criterio | Local (actual) | AWS | Azure |
+|:---------|:--------------:|:---:|:-----:|
+| Costo inicial | S/. 0 | $0 (pago por uso) | $0 (pago por uso) |
+| Costo mensual | S/. 0 | ~$25.70 | ~$21.90 |
+| Escalabilidad | Baja (manual) | Alta (automática) | Alta (automática) |
+| Disponibilidad | Depende del desarrollador | 99.99% SLA | 99.99% SLA |
+| Tiempo de actualización | Manual (repositorio GitHub) | Automático | Automático |
+| Seguridad de datos | Controlada por el equipo | Gestionada por AWS | Gestionada por Azure |
+| Mantenimiento | Alto (gestión propia) | Bajo (managed services) | Bajo (managed services) |
+| Recomendación para v1.0 | ✅ Adecuado | Para v2.0+ | Para v2.0+ |
+
+**Conclusión del análisis de nube:** Para la versión académica v1.0, el despliegue local mediante GitHub es suficiente y sin costo. Azure resulta ligeramente más económico para una eventual versión comercial. Se recomienda migrar a nube en la versión v2.0 cuando la base de usuarios justifique la inversión.
+
+#### 4.2.7. Infraestructura como Código (IaC) — Terraform
+
+Se presenta un ejemplo de configuración Terraform para el despliegue del servidor de firmas en AWS, listo para escalar SecureGuard Antivirus a producción en la versión v2.0.
+
+```hcl
+# ==========================================================
+# SecureGuard Antivirus — Infraestructura como Código (IaC)
+# Proveedor: Amazon Web Services (AWS)
+# Versión objetivo: v2.0
+# Herramienta: Terraform >= 1.5
+# ==========================================================
+
+terraform {
+  required_version = ">= 1.5"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+# --- Configuración del proveedor AWS ---
+provider "aws" {
+  region = var.aws_region  # Región donde se despliegan los recursos (ej. us-east-1)
+}
+
+# --- Variables parametrizables ---
+variable "aws_region" {
+  description = "Región AWS para el despliegue"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "environment" {
+  description = "Entorno de despliegue: dev | staging | prod"
+  type        = string
+  default     = "prod"
+}
+
+variable "db_password" {
+  description = "Contraseña de la base de datos de firmas (definir en terraform.tfvars)"
+  type        = string
+  sensitive   = true  # Oculta el valor en los logs de Terraform
+}
+
+# --- Bucket S3 para almacenamiento de firmas ---
+resource "aws_s3_bucket" "signatures" {
+  bucket = "secureguard-signatures-${var.environment}"
+  tags = {
+    Name        = "SecureGuard Signatures"
+    Environment = var.environment
+    Project     = "SecureGuard Antivirus"
+  }
+}
+
+# Habilitar versionado del bucket (permite rollback de firmas)
+resource "aws_s3_bucket_versioning" "signatures_versioning" {
+  bucket = aws_s3_bucket.signatures.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# Bloquear acceso público al bucket (las firmas se sirven vía CloudFront)
+resource "aws_s3_bucket_public_access_block" "signatures_block" {
+  bucket                  = aws_s3_bucket.signatures.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# --- Distribución CloudFront para CDN de actualizaciones ---
+resource "aws_cloudfront_distribution" "signatures_cdn" {
+  enabled             = true
+  comment             = "CDN para actualizaciones de firmas SecureGuard"
+  default_root_object = "malware_hashes.txt"
+
+  origin {
+    domain_name = aws_s3_bucket.signatures.bucket_regional_domain_name
+    origin_id   = "S3-SecureGuard-Signatures"
+
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.oai.cloudfront_access_identity_path
+    }
+  }
+
+  default_cache_behavior {
+    allowed_methods  = ["GET", "HEAD"]          # Solo lectura; las firmas se publican por el equipo
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "S3-SecureGuard-Signatures"
+    viewer_protocol_policy = "redirect-to-https" # Forzar HTTPS para seguridad
+
+    forwarded_values {
+      query_string = false
+      cookies { forward = "none" }
+    }
+
+    min_ttl     = 3600    # Cache mínimo 1 hora
+    default_ttl = 86400   # Cache por defecto 24 horas
+    max_ttl     = 604800  # Cache máximo 7 días
+  }
+
+  restrictions {
+    geo_restriction { restriction_type = "none" }  # Disponible globalmente
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true  # Usar certificado TLS de CloudFront
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "SecureGuard Antivirus"
+  }
+}
+
+# Identity para que CloudFront acceda al bucket S3 privado
+resource "aws_cloudfront_origin_access_identity" "oai" {
+  comment = "OAI para SecureGuard Signatures"
+}
+
+# --- Base de datos RDS PostgreSQL para gestión de versiones de firmas ---
+resource "aws_db_instance" "signatures_db" {
+  identifier        = "secureguard-signatures-db"
+  engine            = "postgres"
+  engine_version    = "15.4"
+  instance_class    = "db.t3.micro"  # Instancia de bajo costo para iniciar
+  allocated_storage = 20             # 20 GB de almacenamiento inicial
+
+  db_name  = "secureguard"
+  username = "sgadmin"
+  password = var.db_password  # Definir en terraform.tfvars (NO commitear)
+
+  skip_final_snapshot    = false
+  final_snapshot_identifier = "secureguard-final-snapshot"
+  deletion_protection    = true  # Protección contra eliminación accidental
+
+  backup_retention_period = 7    # Respaldo automático por 7 días
+  backup_window           = "03:00-04:00"  # Ventana de respaldo (UTC)
+
+  tags = {
+    Environment = var.environment
+    Project     = "SecureGuard Antivirus"
+  }
+}
+
+# --- Outputs: información relevante tras el despliegue ---
+output "cdn_domain" {
+  description = "URL del CDN para actualización de firmas (usar en updater.rs)"
+  value       = aws_cloudfront_distribution.signatures_cdn.domain_name
+}
+
+output "s3_bucket_name" {
+  description = "Nombre del bucket S3 para subir nuevas firmas"
+  value       = aws_s3_bucket.signatures.id
+}
+
+output "db_endpoint" {
+  description = "Endpoint de conexión a la base de datos de versiones"
+  value       = aws_db_instance.signatures_db.endpoint
+  sensitive   = true
+}
+```
+
+> **Nota de uso:** Para desplegar esta infraestructura ejecutar:
+> ```bash
+> terraform init          # Inicializar proveedores
+> terraform plan          # Revisar cambios antes de aplicar
+> terraform apply         # Desplegar infraestructura
+> terraform destroy       # Eliminar infraestructura (cuando no se necesite)
+> ```
+> Los valores sensibles (`db_password`) deben definirse en un archivo `terraform.tfvars` que **no debe ser commiteado** al repositorio (agregar al `.gitignore`).
+
 ### 4.3. Factibilidad Operativa
 
 La factibilidad operativa evalúa si los usuarios finales podrán utilizar el sistema y si la organización cuenta con la capacidad para mantenerlo.
