@@ -1,32 +1,45 @@
-# Rust
-backend_rust/target/
-backend_rust/**/*.rs.bk
-backend_rust/*.pdb
+# ── Rust ──────────────────────────────────────────
+target/
+scan_engine/target/
+**/*.rs.bk
+Cargo.lock          # Excluir en librerías (incluir solo en binarios finales)
 
-# Python
+# ── Python ────────────────────────────────────────
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
+.venv/
+venv/
+env/
 *.egg-info/
 dist/
 build/
+*.egg
 
-# Entorno virtual
-venv/
-env/
-.env
+# ── Compilados PyO3 (generados por maturin) ───────
+gui/*.so
+gui/*.pyd
+gui/*.dylib
+scan_engine/*.so
+scan_engine/*.pyd
 
-# IDE
+# ── PyInstaller ───────────────────────────────────
+dist/
+build/
+*.spec.bak
+
+# ── Datos de usuario (generados en runtime) ───────
+quarantine/
+logs/
+signatures/signatures.db   # DB generada al importar firmas
+
+# ── IDEs ──────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Windows
+# ── OS ────────────────────────────────────────────
+.DS_Store
 Thumbs.db
-Desktop.ini
-*.exe
-*.dll
-
-# Firmas grandes (opcional - si tu archivo pesa mucho)
-# frontend_python/assets/signatures/malware_hashes.txt
+desktop.ini
