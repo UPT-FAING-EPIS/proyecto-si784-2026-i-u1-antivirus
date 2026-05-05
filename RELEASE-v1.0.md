@@ -1,131 +1,210 @@
-# 🚀 Release v1.0 — SecureGuard Antivirus
+# 🏷️ GitHub Releases y Packages — Estrategia de Versionado RustGuard
 
-**Fecha de lanzamiento:** 30 de mayo de 2026  
-**Tag:** `v1.0`  
-**Tipo:** Release estable — Producto Mínimo Viable (MVP)
+## 1. Estrategia de Versionado
 
----
+RustGuard utiliza **Semantic Versioning 2.0.0** (`MAJOR.MINOR.PATCH`):
 
-## 📦 Descargas
+| Componente | Cuándo incrementar | Ejemplo |
+|:-----------|:-------------------|:-------:|
+| **MAJOR** | Cambios incompatibles en la API o arquitectura | 2.0.0 |
+| **MINOR** | Nuevas funcionalidades compatibles con versiones anteriores | 1.1.0 |
+| **PATCH** | Correcciones de bugs y parches de seguridad | 1.0.1 |
 
-| Archivo | Plataforma | Descripción |
-|:--------|:----------:|:------------|
-| `BitCraft_Antivirus_v1.0_Setup.exe` | Windows 10/11 x64 | Instalador completo con GUI + Motor |
-| `secureguard_engine_v1.0.exe` | Windows 10/11 x64 | Motor standalone (CLI) |
-| `Source code (zip)` | — | Código fuente completo |
-| `Source code (tar.gz)` | — | Código fuente completo |
+### Etiquetas de versión pre-release
 
----
-
-## 🎉 Novedades de la Versión v1.0
-
-Esta es la **primera versión estable** de SecureGuard Antivirus, el Producto Mínimo Viable (MVP) del proyecto académico desarrollado en la Universidad Privada de Tacna.
-
-### Motor de Seguridad (Rust)
-
-- **Escaneo por hash SHA-256:** El motor carga en memoria las firmas del archivo `malware_hashes.txt` al inicio y las compara con los hashes de cada archivo escaneado. Las coincidencias se reportan con confianza 1.0.
-- **Análisis heurístico de entropía:** Los archivos PE (ejecutables Windows) con entropía superior a 7.5 bits/byte son marcados como sospechosos (indicativo de ofuscación o empaquetado malicioso).
-- **Detección por strings sospechosos:** Se analizan los primeros 4096 bytes de cada archivo buscando cadenas asociadas a técnicas de malware conocidas (`CreateRemoteThread`, `VirtualAllocEx`, `WriteProcessMemory`, `powershell -enc`, `Invoke-Mimikatz`, `ransom`, `bitcoin_wallet`).
-- **Modo daemon:** El motor opera en modo persistente leyendo comandos JSON por `stdin` y escribiendo respuestas y eventos por `stdout`.
-- **Protección en tiempo real:** Monitoreo de los directorios Documentos, Descargas y `C:\Users\Public` con detección y cuarentena automática.
-
-### Gestión de Cuarentena
-
-- Archivos detectados son movidos a `C:\ProgramData\SecureGuard\Quarantine\` como `<sha256>.quar`
-- Metadatos de ruta original almacenados en archivos `.meta` para permitir restauración
-- Operaciones disponibles: listar, restaurar (devolver a ubicación original) y eliminar definitivamente
-
-### Control del Firewall
-
-- Vista dedicada `FirewallView` para gestión del Firewall de Windows
-- Activación/desactivación mediante `netsh advfirewall set allprofiles state on/off`
-- Indicadores visuales por perfil de red (Dominio, Privado, Público) que reflejan el estado actual
-- Manejo de errores con reversión del switch si el comando falla
-
-### Limpieza del Sistema
-
-- Eliminación de archivos temporales de `C:\Windows\Temp` y `%TEMP%`
-- Reporte del número de archivos/carpetas eliminados
-
-### Actualización de Firmas
-
-- Descarga de `malware_hashes.txt` y `yara_rules.yar` desde repositorio remoto
-- Almacenamiento en directorio `signatures/` local
-- Manejo de errores de conectividad con mensajes descriptivos
-
-### Interfaz Gráfica (Python/CustomTkinter)
-
-- Tema oscuro moderno con sidebar de navegación
-- **Dashboard:** Indicador de estado circular (verde/rojo), botón de escaneo rápido, barra de progreso
-- **Protección:** Switches para protección en tiempo real, anti-ransomware y monitoreo de comportamiento
-- **Firewall:** Vista dedicada con estado por perfil de red
-- **Limpieza:** Vista con botón de limpieza y retroalimentación de resultado
-- **Cuarentena:** Listado de archivos aislados con acciones de restaurar/eliminar
-- **Actualizar:** Vista de actualización de firmas con feedback
-- **Configuración:** Métricas del sistema (CPU, RAM, disco) usando `psutil`
+| Sufijo | Descripción | Ejemplo |
+|:-------|:------------|:-------:|
+| `-alpha.N` | Funcionalidad incompleta, uso interno | `v1.1.0-alpha.1` |
+| `-beta.N` | Feature-complete, en pruebas | `v1.1.0-beta.1` |
+| `-rc.N` | Release Candidate — lista para producción | `v1.1.0-rc.1` |
 
 ---
 
-## 🔧 Mejoras Respecto a Versiones Previas
+## 2. Proceso de Release
 
-| Área | Cambio |
-|:-----|:-------|
-| **FirewallView** | Vista de firewall independiente (reemplaza workaround `SettingsView(only_firewall=True)`) |
-| **Estado de firewall** | Indicadores por perfil (Dominio/Privado/Público) actualizan dinámicamente según estado |
-| **SettingsView** | Removida lógica de firewall; solo muestra información del sistema |
-| **`except` bare** | Reemplazado `except:` por `except (OSError, PermissionError):` en SettingsView |
-| **EngineBridge** | Rollback del switch de firewall si el comando del motor falla |
+### Paso a paso para publicar una release
 
----
+```bash
+# 1. Asegurar que develop está actualizado
+git checkout develop
+git pull origin develop
 
-## 🐛 Problemas Conocidos
+# 2. Crear rama release desde develop
+git checkout -b release/v1.1.0 develop
 
-| ID | Descripción | Workaround |
-|:---|:------------|:-----------|
-| BUG-01 | La vista de cuarentena muestra "Función no implementada" si el motor no está corriendo | Verificar que el motor esté iniciado antes de navegar a cuarentena |
-| BUG-02 | La URL de actualización de firmas tiene placeholder `TU_USUARIO` | Configurar la URL real en `updater.rs` antes de compilar |
-| BUG-03 | El monitoreo en tiempo real no se puede detener sin reiniciar la aplicación | Planificado para v1.1 |
-| BUG-04 | Sin notificaciones de escritorio cuando la ventana está minimizada | Planificado para v1.1 con `plyer` |
+# 3. Actualizar versión en los archivos de configuración
+# - scan_engine/Cargo.toml: version = "1.1.0"
+# - pyproject.toml: version = "1.1.0"
+# - gui/shared/constants.py: APP_VERSION = "1.1.0"
 
----
+# 4. Actualizar CHANGELOG.md
 
-## 📋 Cambios en Documentación
+# 5. Commit de versión
+git add .
+git commit -m "chore: bump version to v1.1.0"
 
-- **FD01-Informe-Factibilidad.md:** Agregado análisis de costos en nube (AWS/Azure) y ejemplo Terraform IaC (§4.2.6, §4.2.7)
-- **FD02-Informe-Gestion.md:** Nuevo — Gestión GitHub, GitFlow, roadmap, GitHub Projects
-- **FD03-Informe-Requerimientos.md:** Nuevo — Historias de usuario, criterios Gherkin, diagramas de secuencia Mermaid
-- **FD04-Informe-Arquitectura.md:** Nuevo — Diagramas de clases, BD, componentes y despliegue
-- **README.md:** Renovado completamente con guía profesional de instalación y uso
-- **wiki/**: Páginas Home, Características, Instalación, Arquitectura y Roadmap
-- **ISSUES.md:** 8 issues formalizados en user story + Gherkin
+# 6. Merge a main y develop
+git checkout main
+git merge --no-ff release/v1.1.0
+git tag -a v1.1.0 -m "Release v1.1.0"
 
----
+git checkout develop
+git merge --no-ff release/v1.1.0
 
-## 🏫 Información del Proyecto
+# 7. Eliminar rama release
+git branch -d release/v1.1.0
 
-| Campo | Valor |
-|:------|:------|
-| **Proyecto** | SecureGuard Antivirus |
-| **Universidad** | Universidad Privada de Tacna |
-| **Curso** | Calidad y Pruebas de Software |
-| **Docente** | Mag. Patrick Cuadros Quiroga |
-| **Desarrolladores** | LLica Mamani, Jimmy Mijair (2023076789) / Sierra Ruiz, Iker Alberto (2023077090) |
-| **Año** | 2026 |
+# 8. Push con tags
+git push origin main develop --tags
+```
+
+El push del tag `v1.1.0` activa automáticamente el job `release` en el pipeline CI/CD (ver `.github/workflows/ci.yml`), que:
+1. Compila el motor Rust en Linux y Windows.
+2. Empaqueta con PyInstaller.
+3. Publica los binarios en la GitHub Release.
 
 ---
 
-## 🔮 Próxima Versión
+## 3. Releases Actuales y Planificadas
 
-La versión **v1.1** está planificada para el 31 de julio de 2026 e incluirá:
+### v1.0.0 — Release Inicial ✅
 
-- Pipeline CI/CD con GitHub Actions
-- Cobertura de pruebas unitarias >= 80%
-- Notificaciones nativas de escritorio
-- Historial de escaneos
-- Actualizaciones automáticas programadas
+**Fecha**: Abril 2026  
+**Estado**: Publicada
 
-Ver el [Roadmap completo](wiki/Roadmap.md) para más detalles.
+**Assets incluidos**:
+
+| Asset | Plataforma | Descripción |
+|:------|:----------:|:------------|
+| `RustGuard-linux` | Linux x86_64 | Binario ELF standalone |
+| `RustGuard-windows.exe` | Windows x64 | Ejecutable PE standalone |
+| `Source code (zip)` | — | Código fuente automático de GitHub |
+| `Source code (tar.gz)` | — | Código fuente automático de GitHub |
+
+**Release Notes v1.0.0**:
+
+```markdown
+## 🛡️ RustGuard v1.0.0 — Release Inicial
+
+### ¿Qué incluye?
+- ⚡ Motor de escaneo en Rust con PyO3 — máximo rendimiento
+- 🔍 Detección por SHA-256 y MD5 contra base de firmas SQLite
+- 🧠 Análisis heurístico de 5 capas (extensión doble, ejecutables ocultos, etc.)
+- 🔒 Sistema de cuarentena con ofuscación XOR
+- 📊 Historial persistente de sesiones de escaneo
+- 🖥️ Interfaz gráfica CustomTkinter con tema oscuro
+- ❌ Cancelación de escaneo en tiempo real
+- 📥 Importación de firmas desde JSON (compatible con MalwareBazaar)
+
+### Instalación
+Ver README.md para instrucciones completas.
+
+### Plataformas soportadas
+- Windows 10/11 (x64)
+- Linux (x86_64, glibc 2.31+)
+- macOS (build desde fuente)
+
+### Notas de seguridad
+- El motor Rust no realiza conexiones de red — 100% offline
+- La cuarentena usa ofuscación XOR (no cifrado criptográfico)
+- Para entornos de producción, se recomienda cifrado AES-256 (planificado para v2.1.0)
+```
 
 ---
 
-*SecureGuard Antivirus v1.0 — Universidad Privada de Tacna — 2026*
+### v1.1.0 — Planificada (Q3 2026) 🔄
+
+**Assets previstos**:
+- `RustGuard-linux-v1.1.0`
+- `RustGuard-windows-v1.1.0.exe`
+- Reglas YARA de ejemplo (`.yar`)
+
+---
+
+## 4. GitHub Packages
+
+### Publicación de paquete Python (PyPI / GHCR)
+
+Aunque RustGuard en v1.0.0 no publica en PyPI debido a la dependencia del motor Rust compilado, en versiones futuras se consideran las siguientes estrategias:
+
+#### Opción A — GitHub Container Registry (Docker)
+
+```dockerfile
+# Dockerfile (referencial — versión futura)
+FROM python:3.11-slim
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copiar wheel pre-compilado
+COPY dist/scan_engine*.whl .
+COPY requirements.txt .
+
+RUN pip install scan_engine*.whl customtkinter
+
+COPY gui/ gui/
+COPY signatures/ signatures/
+
+CMD ["python", "-m", "gui.main"]
+```
+
+#### Opción B — Wheel manylinux (PyPI)
+
+Para una distribución futura vía `pip install rustguard`, se usaría maturin con la opción `--manylinux`:
+
+```bash
+# Construir wheel compatible con múltiples distribuciones Linux
+docker run --rm -v $(pwd):/io \
+  ghcr.io/pyo3/maturin build --release --manylinux 2014
+
+# El wheel resultante puede instalarse en cualquier Linux:
+pip install dist/scan_engine-1.1.0-cp311-cp311-manylinux_2_17_x86_64.mhl
+```
+
+---
+
+## 5. CHANGELOG
+
+### Formato del CHANGELOG (Keep a Changelog)
+
+```markdown
+# Changelog
+
+Todos los cambios notables de este proyecto se documentan en este archivo.
+El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/).
+Este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
+
+## [Unreleased]
+
+## [1.0.0] - 2026-04-28
+
+### Added
+- Motor de escaneo en Rust (PyO3) con SHA-256, MD5 y heurísticas
+- Sistema de cuarentena XOR con registro JSON
+- Historial de sesiones de escaneo (JSON)
+- Interfaz gráfica CustomTkinter (tema oscuro)
+- Importación de firmas desde JSON hacia SQLite
+- Cancelación de escaneo con token atómico thread-safe
+- Quick Scan con rutas predefinidas por SO
+- Full Scan del sistema de archivos
+- Custom Scan de directorio elegido por usuario
+- Empaquetado PyInstaller para Windows y Linux
+```
+
+---
+
+## 6. Protección de la rama main
+
+Se recomienda configurar las siguientes **Branch Protection Rules** en GitHub:
+
+| Regla | Valor recomendado |
+|:------|:-----------------|
+| Require pull request reviews before merging | ✅ 1 reviewer mínimo |
+| Require status checks to pass | ✅ rust-build, python-lint, maturin-build |
+| Require branches to be up to date | ✅ |
+| Do not allow bypassing the above settings | ✅ |
+| Restrict who can push to matching branches | Administradores del repositorio |
